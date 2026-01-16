@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise
+        uses: jdx/mise-action@v2
+
+      - name: Install vibe plugin
+        shell: bash
+        run: |
+          mise plugin install vibe "file://${{ github.workspace }}"
+
+      - name: List available versions
+        shell: bash
+        run: |
+          mise ls-remote vibe | head -10
+
+      - name: Install vibe@latest
+        shell: bash
+        run: |
+          mise install vibe@latest
+
+      - name: Verify vibe installation
+        shell: bash
+        run: |
+          mise exec vibe -- vibe --version
+
+      - name: Verify vibe is in PATH
+        shell: bash
+        run: |
+          mise which vibe
