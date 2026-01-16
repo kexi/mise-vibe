@@ -35,8 +35,15 @@ local function get_downloaded_filename()
 end
 
 -- Shell-escape a string to prevent command injection
-local function shell_escape(s)
-    return "'" .. s:gsub("'", "'\\''") .. "'"
+-- Uses single quotes for Unix, double quotes for Windows
+local function shell_escape(s, isWindows)
+    if isWindows then
+        -- Windows: use double quotes and escape internal double quotes
+        return '"' .. s:gsub('"', '""') .. '"'
+    else
+        -- Unix: use single quotes and escape internal single quotes
+        return "'" .. s:gsub("'", "'\\''") .. "'"
+    end
 end
 
 function PLUGIN:PostInstall(ctx)
@@ -57,12 +64,20 @@ function PLUGIN:PostInstall(ctx)
     local srcFile = path .. "/" .. srcFilename
     local destFile = binDir .. "/" .. destFilename
 
+    -- Normalize paths for Windows (replace forward slashes with backslashes)
+    if isWindows then
+        binDir = binDir:gsub("/", "\\")
+        srcFile = srcFile:gsub("/", "\\")
+        destFile = destFile:gsub("/", "\\")
+    end
+
     -- Create bin directory (platform-specific)
     local mkdirResult
     if isWindows then
-        mkdirResult = os.execute("if not exist " .. shell_escape(binDir) .. " mkdir " .. shell_escape(binDir))
+        -- On Windows, create parent directories as needed
+        mkdirResult = os.execute('cmd /c "if not exist ' .. shell_escape(binDir, isWindows) .. ' mkdir ' .. shell_escape(binDir, isWindows) .. '"')
     else
-        mkdirResult = os.execute("mkdir -p " .. shell_escape(binDir))
+        mkdirResult = os.execute("mkdir -p " .. shell_escape(binDir, isWindows))
     end
     if mkdirResult ~= 0 then
         error("Failed to create bin directory")
@@ -71,9 +86,9 @@ function PLUGIN:PostInstall(ctx)
     -- Move binary to bin/ and rename (platform-specific)
     local mvResult
     if isWindows then
-        mvResult = os.execute("move " .. shell_escape(srcFile) .. " " .. shell_escape(destFile))
+        mvResult = os.execute('cmd /c "move ' .. shell_escape(srcFile, isWindows) .. ' ' .. shell_escape(destFile, isWindows) .. '"')
     else
-        mvResult = os.execute("mv " .. shell_escape(srcFile) .. " " .. shell_escape(destFile))
+        mvResult = os.execute("mv " .. shell_escape(srcFile, isWindows) .. " " .. shell_escape(destFile, isWindows))
     end
     if mvResult ~= 0 then
         error("Failed to move vibe binary to bin/")
@@ -82,7 +97,7 @@ function PLUGIN:PostInstall(ctx)
     -- Set executable permission on Unix systems
     local isUnix = not isWindows
     if isUnix then
-        local chmodResult = os.execute("chmod +x " .. shell_escape(destFile))
+        local chmodResult = os.execute("chmod +x " .. shell_escape(destFile, isWindows))
         if chmodResult ~= 0 then
             error("Failed to set executable permission on vibe")
         end
@@ -90,7 +105,13 @@ function PLUGIN:PostInstall(ctx)
 
     -- Verify installation (platform-specific null device)
     local nullDevice = isWindows and "NUL" or "/dev/null"
-    local testResult = os.execute(shell_escape(destFile) .. " --version > " .. nullDevice .. " 2>&1")
+    local testCmd
+    if isWindows then
+        testCmd = shell_escape(destFile, isWindows) .. " --version > " .. nullDevice .. " 2>&1"
+    else
+        testCmd = shell_escape(destFile, isWindows) .. " --version > " .. nullDevice .. " 2>&1"
+    end
+    local testResult = os.execute(testCmd)
     if testResult ~= 0 then
         error("vibe installation verification failed")
     end
