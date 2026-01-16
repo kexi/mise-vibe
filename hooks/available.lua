@@ -8,8 +8,18 @@ function PLUGIN:Available(ctx)
 
     local repo_url = "https://api.github.com/repos/kexi/vibe/releases"
 
+    -- Use GitHub token if available to avoid rate limiting
+    local headers = {
+        ["Accept"] = "application/vnd.github.v3+json",
+    }
+    local github_token = os.getenv("GITHUB_TOKEN")
+    if github_token and github_token ~= "" then
+        headers["Authorization"] = "token " .. github_token
+    end
+
     local resp, err = http.get({
         url = repo_url,
+        headers = headers,
     })
 
     if err ~= nil then
