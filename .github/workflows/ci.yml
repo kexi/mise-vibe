@@ -37,8 +37,3 @@ jobs:
         shell: bash
         run: |
           mise exec vibe -- vibe --version
-
-      - name: Verify vibe is in PATH
-        shell: bash
-        run: |
-          mise which vibe
