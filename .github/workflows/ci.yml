@@ -8,19 +8,20 @@ on:
 
 jobs:
   test:
-    # TODO: Enable ubuntu-latest and windows-latest when mise bug is fixed
-    # https://github.com/jdx/mise/issues/XXX - panic in registry.rs:172
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
 
       - name: Install mise
         uses: jdx/mise-action@v2
 
-      - name: Install vibe plugin
+      - name: Install vibe plugin from GitHub
         shell: bash
         run: |
-          mise plugin install vibe "file://${{ github.workspace }}"
+          mise plugin install vibe https://github.com/kexi/mise-vibe
 
       - name: List available versions
         shell: bash
