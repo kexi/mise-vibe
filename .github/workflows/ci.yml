@@ -8,10 +8,9 @@ on:
 
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+    # TODO: Enable ubuntu-latest and windows-latest when mise bug is fixed
+    # https://github.com/jdx/mise/issues/XXX - panic in registry.rs:172
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -23,16 +22,15 @@ jobs:
         run: |
           mise plugin install vibe "file://${{ github.workspace }}"
 
-      # Skip ls-remote due to mise bug: https://github.com/jdx/mise/issues/XXXX
-      # - name: List available versions
-      #   shell: bash
-      #   run: |
-      #     mise ls-remote vibe | head -10
-
-      - name: Install vibe@0.8.0
+      - name: List available versions
         shell: bash
         run: |
-          mise install vibe@0.8.0
+          mise ls-remote vibe | head -10
+
+      - name: Install vibe@latest
+        shell: bash
+        run: |
+          mise install vibe@latest
 
       - name: Verify vibe installation
         shell: bash
