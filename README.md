@@ -24,7 +24,7 @@ mise install
 
 ```bash
 # Install specific version
-mise install vibe@0.8.0
+mise install vibe@2.1.1
 
 # List available versions
 mise ls-remote vibe
@@ -33,7 +33,7 @@ mise ls-remote vibe
 mise use -g vibe@latest
 
 # Set local version (in current directory)
-mise use vibe@0.8.0
+mise use vibe@2.1.1
 ```
 
 ## Shell Setup
@@ -75,6 +75,18 @@ end
 | Linux   | x64 | Supported |
 | Linux   | arm64 | Supported |
 | Windows | x64 | Supported |
+
+## Security
+
+Downloaded binaries are verified against the SHA-256 digest published by the
+GitHub Releases API before installation.
+
+## Development
+
+```bash
+mise install      # dev tools (gitleaks, lefthook, pinact)
+lefthook install  # git hooks (secret scan + pinned-actions check)
+```
 
 ## License
 

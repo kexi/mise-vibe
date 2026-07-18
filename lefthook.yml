@@ -1,0 +1,10 @@
+# Local git hooks: mise install && lefthook install
+pre-commit:
+  parallel: true
+  commands:
+    gitleaks:
+      # mise exec: hook shells don't have mise-managed tools on PATH
+      run: mise exec -- gitleaks git --pre-commit --staged --redact
+    pinact:
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: mise exec -- pinact run --check
