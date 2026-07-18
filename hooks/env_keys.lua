@@ -7,6 +7,12 @@ function PLUGIN:EnvKeys(ctx)
     return {
         {
             key = "PATH",
+            value = mainPath,
+        },
+        {
+            -- Installs created by older plugin versions placed the binary in
+            -- bin/; keep it on PATH so they stay usable
+            key = "PATH",
             value = mainPath .. "/bin",
         },
     }

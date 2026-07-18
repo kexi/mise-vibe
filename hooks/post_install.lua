@@ -42,16 +42,10 @@ local function get_downloaded_filename(version)
     return "vibe-" .. platform.os .. "-" .. platform.arch .. platform.ext
 end
 
--- Shell-escape a string to prevent command injection
--- Uses single quotes for Unix, double quotes for Windows
-local function shell_escape(s, isWindows)
-    if isWindows then
-        -- Windows: use double quotes and escape internal double quotes
-        return '"' .. s:gsub('"', '""') .. '"'
-    else
-        -- Unix: use single quotes and escape internal single quotes
-        return "'" .. s:gsub("'", "'\\''") .. "'"
-    end
+-- Shell-escape a string to prevent command injection (Unix only: on Windows
+-- we never shell out — see PostInstall)
+local function shell_escape(s)
+    return "'" .. s:gsub("'", "'\\''") .. "'"
 end
 
 function PLUGIN:PostInstall(ctx)
@@ -68,54 +62,29 @@ function PLUGIN:PostInstall(ctx)
         destFilename = "vibe.exe"
     end
 
-    local binDir = path .. "/bin"
+    -- The binary stays in the install root (no bin/ subdirectory): creating a
+    -- directory would require os.execute, and mise passes os.execute strings
+    -- to `cmd /C` as a single MSVC-escaped argument (\"), which cmd cannot
+    -- parse — any quoted Windows command line breaks. os.rename needs no shell.
     local srcFile = path .. "/" .. srcFilename
-    local destFile = binDir .. "/" .. destFilename
+    local destFile = path .. "/" .. destFilename
 
-    -- Normalize paths for Windows (replace forward slashes with backslashes)
-    if isWindows then
-        binDir = binDir:gsub("/", "\\")
-        srcFile = srcFile:gsub("/", "\\")
-        destFile = destFile:gsub("/", "\\")
+    local ok, renameErr = os.rename(srcFile, destFile)
+    if not ok then
+        error("Failed to rename vibe binary: " .. tostring(renameErr))
     end
 
-    -- Create bin directory (platform-specific)
-    local mkdirResult
-    if isWindows then
-        -- On Windows, create parent directories as needed
-        mkdirResult = os.execute('cmd /c "if not exist ' .. shell_escape(binDir, isWindows) .. ' mkdir ' .. shell_escape(binDir, isWindows) .. '"')
-    else
-        mkdirResult = os.execute("mkdir -p " .. shell_escape(binDir, isWindows))
-    end
-    if mkdirResult ~= 0 then
-        error("Failed to create bin directory")
-    end
-
-    -- Move binary to bin/ and rename (platform-specific)
-    local mvResult
-    if isWindows then
-        mvResult = os.execute('cmd /c "move ' .. shell_escape(srcFile, isWindows) .. ' ' .. shell_escape(destFile, isWindows) .. '"')
-    else
-        mvResult = os.execute("mv " .. shell_escape(srcFile, isWindows) .. " " .. shell_escape(destFile, isWindows))
-    end
-    if mvResult ~= 0 then
-        error("Failed to move vibe binary to bin/")
-    end
-
-    -- Set executable permission on Unix systems
-    local isUnix = not isWindows
-    if isUnix then
-        local chmodResult = os.execute("chmod +x " .. shell_escape(destFile, isWindows))
+    if not isWindows then
+        local chmodResult = os.execute("chmod +x " .. shell_escape(destFile))
         if chmodResult ~= 0 then
             error("Failed to set executable permission on vibe")
         end
-    end
 
-    -- Verify installation (platform-specific null device)
-    local nullDevice = isWindows and "NUL" or "/dev/null"
-    local testCmd = shell_escape(destFile, isWindows) .. " --version > " .. nullDevice .. " 2>&1"
-    local testResult = os.execute(testCmd)
-    if testResult ~= 0 then
-        error("vibe installation verification failed")
+        -- Smoke test. Unix only: os.execute cannot safely quote Windows
+        -- paths (see above), so Windows relies on CI's `mise exec` check.
+        local testResult = os.execute(shell_escape(destFile) .. " --version > /dev/null 2>&1")
+        if testResult ~= 0 then
+            error("vibe installation verification failed")
+        end
     end
 end
