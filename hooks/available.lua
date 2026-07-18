@@ -6,7 +6,8 @@ function PLUGIN:Available(ctx)
     local http = require("http")
     local json = require("json")
 
-    local repo_url = "https://api.github.com/repos/kexi/vibe/releases"
+    -- per_page=100: the default 30 is mostly prereleases, leaving few stable versions listed
+    local repo_url = "https://api.github.com/repos/kexi/vibe/releases?per_page=100"
 
     -- Use GitHub token if available to avoid rate limiting
     local headers = {

@@ -2,9 +2,17 @@
 -- Performs additional setup after installation
 -- Documentation: https://mise.jdx.dev/dev-tools/vfox.html
 
-local function get_downloaded_filename()
+local function get_downloaded_filename(version)
     local os_name = RUNTIME.osType:lower()
     local arch = RUNTIME.archType
+
+    -- v2.0.0 renamed the Windows asset: vibe-windows-x64.exe -> vibe-win32-x64.
+    -- Unparseable versions fall through to the current (v2+) naming.
+    local major = tonumber(version:match("^(%d+)"))
+    local windows_asset = { os = "win32", arch = "x64", ext = "" }
+    if major ~= nil and major < 2 then
+        windows_asset = { os = "windows", arch = "x64", ext = ".exe" }
+    end
 
     -- vibe asset naming: vibe-{os}-{arch}
     local platform_map = {
@@ -17,7 +25,7 @@ local function get_downloaded_filename()
             ["arm64"] = { os = "linux", arch = "arm64", ext = "" },
         },
         ["windows"] = {
-            ["amd64"] = { os = "windows", arch = "x64", ext = ".exe" },
+            ["amd64"] = windows_asset,
         },
     }
 
@@ -54,7 +62,7 @@ function PLUGIN:PostInstall(ctx)
     local os_name = RUNTIME.osType:lower()
     local isWindows = os_name == "windows"
 
-    local srcFilename = get_downloaded_filename()
+    local srcFilename = get_downloaded_filename(sdkInfo.version)
     local destFilename = "vibe"
     if isWindows then
         destFilename = "vibe.exe"
@@ -105,12 +113,7 @@ function PLUGIN:PostInstall(ctx)
 
     -- Verify installation (platform-specific null device)
     local nullDevice = isWindows and "NUL" or "/dev/null"
-    local testCmd
-    if isWindows then
-        testCmd = shell_escape(destFile, isWindows) .. " --version > " .. nullDevice .. " 2>&1"
-    else
-        testCmd = shell_escape(destFile, isWindows) .. " --version > " .. nullDevice .. " 2>&1"
-    end
+    local testCmd = shell_escape(destFile, isWindows) .. " --version > " .. nullDevice .. " 2>&1"
     local testResult = os.execute(testCmd)
     if testResult ~= 0 then
         error("vibe installation verification failed")

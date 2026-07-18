@@ -2,12 +2,20 @@
 -- Returns download information for a specific version
 -- Documentation: https://mise.jdx.dev/dev-tools/vfox.html
 
-local function get_platform()
+local function get_platform(version)
     local os_name = RUNTIME.osType:lower()
     local arch = RUNTIME.archType
 
+    -- v2.0.0 renamed the Windows asset: vibe-windows-x64.exe -> vibe-win32-x64.
+    -- Unparseable versions fall through to the current (v2+) naming.
+    local major = tonumber(version:match("^(%d+)"))
+    local windows_asset = { os = "win32", arch = "x64", ext = "" }
+    if major ~= nil and major < 2 then
+        windows_asset = { os = "windows", arch = "x64", ext = ".exe" }
+    end
+
     -- vibe asset naming: vibe-{os}-{arch}
-    -- OS: darwin, linux, windows
+    -- OS: darwin, linux, win32
     -- Arch: x64, arm64
     local platform_map = {
         ["darwin"] = {
@@ -19,7 +27,7 @@ local function get_platform()
             ["arm64"] = { os = "linux", arch = "arm64", ext = "" },
         },
         ["windows"] = {
-            ["amd64"] = { os = "windows", arch = "x64", ext = ".exe" },
+            ["amd64"] = windows_asset,
         },
     }
 
@@ -38,7 +46,7 @@ end
 
 function PLUGIN:PreInstall(ctx)
     local version = ctx.version
-    local platform = get_platform()
+    local platform = get_platform(version)
 
     -- Build asset name: vibe-{os}-{arch}{ext}
     local asset_name = "vibe-" .. platform.os .. "-" .. platform.arch .. platform.ext
