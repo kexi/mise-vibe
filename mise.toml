@@ -1,0 +1,5 @@
+# Dev tools for working on this plugin (mise install; lefthook install)
+[tools]
+gitleaks = "8.30.1"
+lefthook = "2.1.10"
+pinact = "4.1.0"

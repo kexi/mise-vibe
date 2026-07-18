@@ -44,6 +44,39 @@ local function get_platform(version)
     return platform
 end
 
+-- Fetch the asset's SHA-256 from the GitHub API release digest so mise can
+-- verify the download. Best-effort: a rate-limited or offline API must not
+-- break installs, so any failure returns nil (mise then skips verification).
+local function get_asset_sha256(version, asset_name)
+    local http = require("http")
+    local json = require("json")
+
+    local headers = {
+        ["Accept"] = "application/vnd.github.v3+json",
+    }
+    local github_token = os.getenv("GITHUB_TOKEN")
+    if github_token and github_token ~= "" then
+        headers["Authorization"] = "token " .. github_token
+    end
+
+    local resp, err = http.get({
+        url = "https://api.github.com/repos/kexi/vibe/releases/tags/v" .. version,
+        headers = headers,
+    })
+    if err ~= nil or resp.status_code ~= 200 then
+        return nil
+    end
+
+    local release = json.decode(resp.body)
+    for _, asset in ipairs(release.assets or {}) do
+        if asset.name == asset_name then
+            local digest = asset.digest or ""
+            return digest:match("^sha256:(%x+)$")
+        end
+    end
+    return nil
+end
+
 function PLUGIN:PreInstall(ctx)
     local version = ctx.version
     local platform = get_platform(version)
@@ -57,5 +90,6 @@ function PLUGIN:PreInstall(ctx)
     return {
         version = version,
         url = url,
+        sha256 = get_asset_sha256(version, asset_name),
     }
 end

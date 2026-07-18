@@ -16,10 +16,14 @@ jobs:
       # available.lua reads GITHUB_TOKEN to avoid API rate limiting
       GITHUB_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Install mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
+        with:
+          # mise.toml lists dev tools for the security job; the e2e
+          # matrix only needs mise itself
+          install: false
 
       # Link the checked-out plugin so PRs test their own changes,
       # not whatever is on main
@@ -53,3 +57,23 @@ jobs:
         shell: bash
         run: |
           mise exec vibe@1.8.1 -- vibe --version
+
+  security:
+    runs-on: ubuntu-latest
+    env:
+      # pinact --verify resolves action refs via the GitHub API
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          # gitleaks scans the full git history
+          fetch-depth: 0
+
+      - name: Install mise
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
+
+      - name: Verify pinned actions (pinact)
+        run: mise exec -- pinact run --check --verify
+
+      - name: Scan for secrets (gitleaks)
+        run: mise exec -- gitleaks git --redact .

@@ -76,6 +76,18 @@ end
 | Linux   | arm64 | Supported |
 | Windows | x64 | Supported |
 
+## Security
+
+Downloaded binaries are verified against the SHA-256 digest published by the
+GitHub Releases API before installation.
+
+## Development
+
+```bash
+mise install      # dev tools (gitleaks, lefthook, pinact)
+lefthook install  # git hooks (secret scan + pinned-actions check)
+```
+
 ## License
 
 Apache-2.0
